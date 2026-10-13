@@ -26,6 +26,12 @@ func TestKandeloUnixMemory(t *testing.T) {
 	if err := unix.Madvise(data, unix.MADV_RANDOM); err != nil {
 		t.Fatal(err)
 	}
+	if err := unix.Mlock(data); err != nil {
+		t.Fatal(err)
+	}
+	if err := unix.Munlock(data); err != nil {
+		t.Fatal(err)
+	}
 	data[0] = 'X'
 	if err := unix.Msync(data, unix.MS_SYNC); err != nil {
 		t.Fatal(err)
