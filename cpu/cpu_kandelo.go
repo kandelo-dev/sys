@@ -1,4 +1,4 @@
-//go:build wasm && kandelo
+//go:build (wasm || wasm32) && kandelo
 
 package cpu
 
