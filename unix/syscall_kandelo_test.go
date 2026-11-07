@@ -8,6 +8,52 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func TestKandeloUnixDup(t *testing.T) {
+	file, err := os.CreateTemp("", "kandelo-xsys-dup-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(file.Name())
+	defer file.Close()
+	if _, err := file.WriteString("abc"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Seek(0, 0); err != nil {
+		t.Fatal(err)
+	}
+	fd := int(file.Fd())
+	if flags, err := syscall.Fcntl(fd, syscall.F_GETFD, 0); err != nil || flags&syscall.FD_CLOEXEC == 0 {
+		t.Fatalf("original descriptor close-on-exec: flags=%d err=%v", flags, err)
+	}
+	duplicate, err := unix.Dup(fd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer syscall.Close(duplicate)
+	if duplicate == fd {
+		t.Fatal("Dup returned the original descriptor")
+	}
+	if flags, err := syscall.Fcntl(duplicate, syscall.F_GETFD, 0); err != nil || flags&syscall.FD_CLOEXEC != 0 {
+		t.Fatalf("duplicate close-on-exec must be clear: flags=%d err=%v", flags, err)
+	}
+	var data [1]byte
+	if n, err := syscall.Read(duplicate, data[:]); err != nil || n != 1 || data[0] != 'a' {
+		t.Fatalf("duplicate read: n=%d data=%q err=%v", n, data, err)
+	}
+	if n, err := file.Read(data[:]); err != nil || n != 1 || data[0] != 'b' {
+		t.Fatalf("shared file offset: n=%d data=%q err=%v", n, data, err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := syscall.Read(duplicate, data[:]); err != nil || n != 1 || data[0] != 'c' {
+		t.Fatalf("duplicate after original close: n=%d data=%q err=%v", n, data, err)
+	}
+	if _, err := unix.Dup(-1); err != syscall.EBADF {
+		t.Fatalf("invalid descriptor: got %v, want EBADF", err)
+	}
+}
+
 func TestKandeloUnixMemory(t *testing.T) {
 	file, err := os.CreateTemp("", "kandelo-xsys-mmap-")
 	if err != nil {

@@ -39,6 +39,10 @@ func Access(path string, mode uint32) error {
 	return syscall.Access(path, mode)
 }
 
+func Dup(fd int) (int, error) {
+	return syscall.Dup(fd)
+}
+
 func SetsockoptInt(fd, level, opt, value int) error {
 	return syscall.SetsockoptInt(fd, level, opt, value)
 }
